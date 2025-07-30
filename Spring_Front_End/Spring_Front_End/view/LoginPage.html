@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Dashboard</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: linear-gradient(to right, #e0eafc, #cfdef3);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 40px 30px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 700px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+            transition: box-shadow 0.3s ease-in-out;
+        }
+
+        .container:hover {
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        h2 {
+            text-align: center;
+            color: #222;
+            font-size: 28px;
+            margin-bottom: 30px;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            border: 1.5px solid #d0d7e2;
+            font-size: 16px;
+            transition: border 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        input:focus {
+            border-color: #4a89dc;
+            box-shadow: 0 0 5px rgba(74, 137, 220, 0.3);
+            outline: none;
+        }
+
+        button {
+            flex: 1 1 30%;
+            margin: 5px;
+            padding: 14px;
+            background: linear-gradient(to right, #4a89dc, #5d9cec);
+            color: #fff;
+            font-weight: 600;
+            font-size: 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s ease, background-color 0.3s ease;
+        }
+
+        button:hover {
+            background: linear-gradient(to right, #3a77c5, #4a89dc);
+            transform: translateY(-2px);
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin-top: 25px;
+        }
+
+        li {
+            background-color: #f3f8fd;
+            padding: 12px 18px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            font-size: 16px;
+            color: #333;
+            cursor: pointer;
+            border-left: 5px solid #4a89dc;
+            transition: background-color 0.25s ease;
+        }
+
+        li:hover {
+            background-color: #e6f0fb;
+        }
+
+        hr {
+            margin: 30px 0;
+            border: none;
+            height: 1px;
+            background-color: #e0e0e0;
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>User Dashboard</h2>
+
+    <input type="number" id="userId" placeholder="User ID (Number)" required />
+    <input type="text" id="userName" placeholder="User Name" required />
+
+    <div class="btn-group">
+        <button onclick="addUser()">Add</button>
+        <button onclick="updateUser()">Update</button>
+        <button onclick="confirmDelete()">Delete</button>
+    </div>
+
+    <hr />
+
+    <h3>All Users</h3>
+    <ul id="userList"></ul>
+</div>
+
+<script>
+    const apiBase = "http://localhost:8080/api/v1";
+
+    function fetchUsers() {
+        fetch(`${apiBase}/getusers`)
+            .then((response) => response.json())
+            .then((data) => {
+                const list = document.getElementById("userList");
+                list.innerHTML = "";
+                data.forEach((user) => {
+                    const li = document.createElement("li");
+                    li.textContent = `ID: ${user.id}, Name: ${user.name}`;
+                    li.addEventListener("click", () => fillInputs(user));
+                    list.appendChild(li);
+                });
+            })
+            .catch((err) => console.error("Fetch users failed", err));
+    }
+
+    function getUserInput() {
+        return {
+            id: parseInt(document.getElementById("userId").value),
+            name: document.getElementById("userName").value.trim()
+        };
+    }
+
+    function clearInputs() {
+        document.getElementById("userId").value = "";
+        document.getElementById("userName").value = "";
+    }
+
+    function fillInputs(user) {
+        document.getElementById("userId").value = user.id;
+        document.getElementById("userName").value = user.name;
+    }
+
+    function addUser() {
+        const user = getUserInput();
+        if (!user.id || !user.name) {
+            alert("Please enter both ID and Name.");
+            return;
+        }
+        fetch(`${apiBase}/adduser`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(user)
+        })
+            .then(() => {
+                fetchUsers();
+                clearInputs();
+            })
+            .catch((err) => console.error("Add failed", err));
+    }
+
+    function updateUser() {
+        const user = getUserInput();
+        if (!user.id || !user.name) {
+            alert("Please enter both ID and Name.");
+            return;
+        }
+        fetch(`${apiBase}/updateuser`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(user)
+        })
+            .then(() => {
+                fetchUsers();
+                clearInputs();
+            })
+            .catch((err) => console.error("Update failed", err));
+    }
+
+    function confirmDelete() {
+        const user = getUserInput();
+        if (!user.id) {
+            alert("Please enter the ID of the user to delete.");
+            return;
+        }
+
+        const confirmed = confirm(`Are you sure you want to delete user ID ${user.id}?`);
+        if (confirmed) {
+            deleteUser(user);
+        }
+    }
+
+    function deleteUser(user) {
+        fetch(`${apiBase}/deleteuser`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(user)
+        })
+            .then(() => {
+                fetchUsers();
+                clearInputs();
+            })
+            .catch((err) => console.error("Delete failed", err));
+    }
+
+    window.onload = fetchUsers;
+</script>
+</body>
+</html>
